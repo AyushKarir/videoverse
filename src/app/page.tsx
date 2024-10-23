@@ -238,9 +238,6 @@ export default function VideoCropper() {
                     ref={previewVideoRef}
                     className="w-full h-full object-cover"
                     src="/sample-video.mp4"
-                    style={{
-                      transform: `translateX(-${overlayPosition.x}px)`
-                    }}
                   />
                 </div>
               ) : (
