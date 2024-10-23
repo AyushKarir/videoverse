@@ -15,16 +15,17 @@ export default function VideoCropper() {
   const [isCropperActive, setIsCropperActive] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState({ x: 0, y: 0 });
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
   const aspectRatios = {
-    '9:16': 0.5625,
-    '1:1': 1,
-    '4:5': 0.8,
-    '16:9': 1.7778
+    '9:16': { width: 9, height: 16 },
+    '4:5': { width: 4, height: 5 },
+    '1:1': { width: 1, height: 1 },
+    '16:9': { width: 16, height: 9 },
   };
 
   const formatTime = (time: number) => {
@@ -88,6 +89,21 @@ export default function VideoCropper() {
     setOverlayPosition(newPosition);
   };
 
+  const handleSizeChange = (newSize: { width: number; height: number }) => {
+    setOverlaySize(newSize);
+  };
+
+  const updateOverlaySize = (ratio: string) => {
+    const aspectRatio = aspectRatios[ratio as keyof typeof aspectRatios];
+    if (aspectRatio) {
+      // Assuming you want to set the overlay size in pixels
+      const height = 300; // Set a fixed height or calculate based on your requirements
+      const width = (height * aspectRatio.width) / aspectRatio.height;
+      handleSizeChange({ width, height });
+    }
+  };
+
+
   return (
     <div className="bg-[#1C1C1F] min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
@@ -121,8 +137,9 @@ export default function VideoCropper() {
               <VideoOverlay
                 videoRef={videoRef}
                 isActive={isCropperActive}
-                aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
+                aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]} // Pass selected aspect ratio
                 onPositionChange={setOverlayPosition}
+                onDimensionsChange={setOverlaySize}
               />
             </div>
 
@@ -170,6 +187,23 @@ export default function VideoCropper() {
               </div>
             </div>
           </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           {/* Preview */}
           <div className="bg-[#1F1F1F] rounded-lg p-6">
@@ -224,7 +258,11 @@ export default function VideoCropper() {
 
           <select
             value={selectedRatio}
-            onChange={(e) => setSelectedRatio(e.target.value)}
+            onChange={(e) => {
+              const newRatio = e.target.value;
+              setSelectedRatio(newRatio);
+              updateOverlaySize(newRatio); // Update overlay size when the ratio changes
+            }}
             className="bg-transparent text-white/60 border border-white/20 rounded px-3 py-2"
           >
             <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="9:16">
@@ -273,7 +311,7 @@ export default function VideoCropper() {
             Cancel
           </button>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
