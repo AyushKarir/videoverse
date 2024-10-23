@@ -25,3 +25,31 @@ body {
     text-wrap: balance;
   }
 }
+
+// styles.css
+.bg-primary {
+  background-color: #1C1C1F;
+}
+
+.button-primary {
+  background-color: #7F5AF0;
+  color: white;
+  border-radius: 6px;
+}
+
+.button-secondary {
+  background-color: transparent;
+  border: 1px solid #7F5AF0;
+  color: white;
+}
+
+.cropper-grid {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.slider {
+  background-color: #fff;
+  height: 4px;
+  border-radius: 2px;
+}

@@ -1,101 +1,279 @@
-import Image from "next/image";
+'use client'
+import React, { useState, useRef, useEffect } from 'react';
+import { Play, Pause, Volume2 } from 'lucide-react';
+import VideoOverlay from '../components/overlay'
 
-export default function Home() {
+
+
+export default function VideoCropper() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.5);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [selectedRatio, setSelectedRatio] = useState('9:16');
+  const [isCropperActive, setIsCropperActive] = useState(false);
+  const [overlayPosition, setOverlayPosition] = useState({ x: 0, y: 0 });
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  const aspectRatios = {
+    '9:16': 0.5625,
+    '1:1': 1,
+    '4:5': 0.8,
+    '16:9': 1.7778
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.onloadedmetadata = () => {
+        setDuration(videoRef.current?.duration || 0);
+      };
+    }
+  }, []);
+
+  // Synchronize preview video with main video
+  useEffect(() => {
+    if (isPreviewMode && previewVideoRef.current && videoRef.current) {
+      previewVideoRef.current.currentTime = videoRef.current.currentTime;
+      if (isPlaying) {
+        previewVideoRef.current.play();
+      } else {
+        previewVideoRef.current.pause();
+      }
+    }
+  }, [isPlaying, isPreviewMode, currentTime]);
+
+  const handleStartCropper = () => {
+    setIsCropperActive(true);
+  };
+
+  const handleGeneratePreview = () => {
+    setIsPreviewMode(true);
+  };
+
+  const handlePlayPause = () => {
+    if (!videoRef.current) return;
+
+    if (isPlaying) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressRef.current || !videoRef.current) return;
+
+    const rect = progressRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / rect.width;
+    const newTime = percentage * duration;
+
+    videoRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const handlePositionChange = (newPosition: { x: number; y: number }) => {
+    setOverlayPosition(newPosition);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="bg-[#1C1C1F] min-h-screen p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-white text-2xl font-medium">Dynamic Flip</h1>
+          <div className="flex gap-4">
+            <button className="px-4 py-2 text-white/60 hover:text-white transition-colors">
+              Auto Flip
+            </button>
+            <button className="px-4 py-2 text-white/60 hover:text-white transition-colors">
+              Dynamic Flip
+            </button>
+          </div>
+          <button className="text-white text-xl">X</button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-2 gap-8">
+          {/* Video Player Section */}
+          <div className="space-y-4">
+            {/* Video Container */}
+            <div className="relative bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                className="w-full aspect-video"
+                src="/sample-video.mp4"
+                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+              />
+
+              <VideoOverlay
+                videoRef={videoRef}
+                isActive={isCropperActive}
+                aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
+                onPositionChange={setOverlayPosition}
+              />
+            </div>
+
+            {/* Video Controls */}
+            <div className="bg-[#1F1F1F] p-4 rounded-lg">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handlePlayPause}
+                  className="text-white hover:text-white/80 transition-colors"
+                >
+                  {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                </button>
+
+                <div className="flex-1">
+                  <div
+                    ref={progressRef}
+                    className="h-1 bg-white/20 rounded cursor-pointer"
+                    onClick={handleProgressClick}
+                  >
+                    <div
+                      className="h-full bg-white rounded"
+                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-white/60">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>/</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Volume2 size={20} className="text-white" />
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-24 accent-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="bg-[#1F1F1F] rounded-lg p-6">
+            <h2 className="text-white mb-4">Preview</h2>
+            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px]">
+              {!isCropperActive ? (
+                <div className="text-center">
+                  <div className="mb-2">
+                    <img src="/api/placeholder/48/48" alt="Preview" className="mx-auto" />
+                  </div>
+                  <p className="text-white/60 mb-1">Preview not available</p>
+                  <p className="text-white/40 text-sm">
+                    Please click on "Start Cropper" and then play video
+                  </p>
+                </div>
+              ) : isPreviewMode ? (
+                <video
+                  ref={previewVideoRef}
+                  className="w-full h-full object-contain"
+                  src="/sample-video.mp4"
+                  style={{
+                    clipPath: `inset(${overlayPosition.y}px ${overlayPosition.x}px)`,
+                  }}
+                />
+              ) : (
+                <div className="text-white">Click "Generate Preview" to see the cropped video</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Controls */}
+        <div className="mt-6 flex items-center gap-4">
+          <select
+            value={`${playbackRate}x`}
+            onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+            className="bg-transparent text-white/60 border border-white/20 rounded px-3 py-2"
+          >
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="1x">
+              Playback speed 1x
+            </option>
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="0.5x">
+              0.5x
+            </option>
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="1.5x">
+              1.5x
+            </option>
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="2x">
+              2x
+            </option>
+          </select>
+
+          <select
+            value={selectedRatio}
+            onChange={(e) => setSelectedRatio(e.target.value)}
+            className="bg-transparent text-white/60 border border-white/20 rounded px-3 py-2"
+          >
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="9:16">
+              Cropper Aspect Ratio 9:16
+            </option>
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="1:1">
+              1:1
+            </option>
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="4:5">
+              4:5
+            </option>
+            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="16:9">
+              16:9
+            </option>
+          </select>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-6 flex items-center gap-4">
+          <button
+            onClick={handleStartCropper}
+            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded"
+          >
+            Start Cropper
+          </button>
+
+          <button
+            className="border border-white/20 text-white/60 hover:text-white px-6 py-2 rounded"
+            onClick={() => {
+              setIsCropperActive(false);
+              setIsPreviewMode(false);
+            }}
+          >
+            Remove Cropper
+          </button>
+
+          <button
+            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded"
+            disabled={!isCropperActive}
+            onClick={handleGeneratePreview}
+          >
+            Generate Preview
+          </button>
+
+          <button className="ml-auto text-white/60 hover:text-white px-6 py-2 rounded">
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
