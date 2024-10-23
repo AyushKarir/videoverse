@@ -146,8 +146,8 @@ export default function VideoCropper() {
                   videoRef={videoRef}
                   isActive={true}
                   aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
-                  onPositionChange={setOverlayPosition}
-                  onDimensionsChange={setOverlaySize}
+                  onPositionChange={handlePositionChange}
+                  onDimensionsChange={handleSizeChange}
                 />
               )}
             </div>
