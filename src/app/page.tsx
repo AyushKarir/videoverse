@@ -1,9 +1,7 @@
-'use client'
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2 } from 'lucide-react';
-import VideoOverlay from '../components/overlay'
-
-
+"use client";
+import React, { useState, useRef, useEffect } from "react";
+import { Play, Pause, Volume2 } from "lucide-react";
+import VideoOverlay from "../components/overlay";
 
 export default function VideoCropper() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -11,27 +9,28 @@ export default function VideoCropper() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [selectedRatio, setSelectedRatio] = useState('9:16');
+  const [selectedRatio, setSelectedRatio] = useState("9:16");
   const [isCropperActive, setIsCropperActive] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState({ x: 0, y: 0 });
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [overlaySize, setOverlaySize] = useState({ width: 9, height: 16 });
+  const [percentage, setPercentage] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
   const aspectRatios = {
-    '9:16': { width: 9, height: 16 },
-    '4:5': { width: 4, height: 5 },
-    '1:1': { width: 1, height: 1 },
-    '16:9': { width: 16, height: 9 },
+    "9:16": { width: 9, height: 16 },
+    "4:5": { width: 4, height: 5 },
+    "1:1": { width: 1, height: 1 },
+    "16:9": { width: 16, height: 9 },
   };
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
   useEffect(() => {
@@ -103,15 +102,6 @@ export default function VideoCropper() {
     }
   };
 
-
-
-
-
-
-
-
-
-
   return (
     <div className="bg-[#1C1C1F] min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
@@ -139,13 +129,19 @@ export default function VideoCropper() {
                 ref={videoRef}
                 className="w-full aspect-video"
                 src="/sample-video.mp4"
-                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                onTimeUpdate={() =>
+                  setCurrentTime(videoRef.current?.currentTime || 0)
+                }
               />
               {isCropperActive && (
                 <VideoOverlay
+                  percentage={percentage}
+                  setPercentage={setPercentage}
                   videoRef={videoRef}
                   isActive={true}
-                  aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
+                  aspectRatio={
+                    aspectRatios[selectedRatio as keyof typeof aspectRatios]
+                  }
                   onPositionChange={handlePositionChange}
                   onDimensionsChange={handleSizeChange}
                 />
@@ -197,23 +193,6 @@ export default function VideoCropper() {
             </div>
           </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
           {/* Preview */}
           <div className="bg-[#1F1F1F] rounded-lg p-6">
             <h2 className="text-white mb-4">Preview</h2>
@@ -221,7 +200,11 @@ export default function VideoCropper() {
               {!isCropperActive ? (
                 <div className="text-center">
                   <div className="mb-2">
-                    <img src="/api/placeholder/48/48" alt="Preview" className="mx-auto" />
+                    <img
+                      src="/api/placeholder/48/48"
+                      alt="Preview"
+                      className="mx-auto"
+                    />
                   </div>
                   <p className="text-white/60 mb-1">Preview not available</p>
                   <p className="text-white/40 text-sm">
@@ -229,19 +212,24 @@ export default function VideoCropper() {
                   </p>
                 </div>
               ) : isPreviewMode ? (
-                <div style={{
-                  width: overlaySize.width,
-                  height: overlaySize.height,
-                  overflow: 'hidden'
-                }}>
+                <div
+                  className="relative"
+                  style={{
+                    overflow: "hidden",
+                    position: "relative",
+                    clipPath: `inset(0 ${100 - percentage - 50}% 0 ${percentage}%)`,
+                  }}
+                >
                   <video
                     ref={previewVideoRef}
-                    className="w-full h-full object-cover"
+                    className="h-full object-cover"
                     src="/sample-video.mp4"
                   />
                 </div>
               ) : (
-                <div className="text-white">Click "Generate Preview" to see the cropped video</div>
+                <div className="text-white">
+                  Click "Generate Preview" to see the cropped video
+                </div>
               )}
             </div>
           </div>
@@ -323,7 +311,8 @@ export default function VideoCropper() {
             Cancel
           </button>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
+
