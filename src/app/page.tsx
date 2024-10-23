@@ -15,7 +15,7 @@ export default function VideoCropper() {
   const [isCropperActive, setIsCropperActive] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState({ x: 0, y: 0 });
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
+  const [overlaySize, setOverlaySize] = useState({ width: 9, height: 16 });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -104,6 +104,14 @@ export default function VideoCropper() {
   };
 
 
+
+
+
+
+
+
+
+
   return (
     <div className="bg-[#1C1C1F] min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
@@ -133,14 +141,15 @@ export default function VideoCropper() {
                 src="/sample-video.mp4"
                 onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
               />
-
-              <VideoOverlay
-                videoRef={videoRef}
-                isActive={isCropperActive}
-                aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]} // Pass selected aspect ratio
-                onPositionChange={setOverlayPosition}
-                onDimensionsChange={setOverlaySize}
-              />
+              {isCropperActive && (
+                <VideoOverlay
+                  videoRef={videoRef}
+                  isActive={true}
+                  aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
+                  onPositionChange={setOverlayPosition}
+                  onDimensionsChange={setOverlaySize}
+                />
+              )}
             </div>
 
             {/* Video Controls */}
@@ -208,7 +217,7 @@ export default function VideoCropper() {
           {/* Preview */}
           <div className="bg-[#1F1F1F] rounded-lg p-6">
             <h2 className="text-white mb-4">Preview</h2>
-            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px]">
+            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden">
               {!isCropperActive ? (
                 <div className="text-center">
                   <div className="mb-2">
@@ -220,14 +229,20 @@ export default function VideoCropper() {
                   </p>
                 </div>
               ) : isPreviewMode ? (
-                <video
-                  ref={previewVideoRef}
-                  className="w-full h-full object-contain"
-                  src="/sample-video.mp4"
-                  style={{
-                    clipPath: `inset(${overlayPosition.y}px ${overlayPosition.x}px)`,
-                  }}
-                />
+                <div style={{
+                  width: overlaySize.width,
+                  height: overlaySize.height,
+                  overflow: 'hidden'
+                }}>
+                  <video
+                    ref={previewVideoRef}
+                    className="w-full h-full object-cover"
+                    src="/sample-video.mp4"
+                    style={{
+                      transform: `translateX(-${overlayPosition.x}px)`
+                    }}
+                  />
+                </div>
               ) : (
                 <div className="text-white">Click "Generate Preview" to see the cropped video</div>
               )}
