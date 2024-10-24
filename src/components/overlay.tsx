@@ -29,7 +29,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   const overlayRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const isInitializedRef = useRef(false);
-  console.log(position);
+  // console.log(position);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -85,7 +85,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     const totalDragWidth = bounds.right - bounds.left;
     const percentage =
       totalDragWidth === 0 ? 0 : (data.x / totalDragWidth) * 100;
-    console.log(percentage);
+    // console.log(percentage);
     setPercentage(percentage);
 
     // Only update if position actually changed
@@ -131,6 +131,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
           </div>
           <div className="absolute inset-x-0 bottom-0 text-white text-xs bg-black bg-opacity-50 p-1">
             {percentage.toFixed(2)}%
+            {/* {100 - percentage.toFixed(2)}% */}
           </div>
           {/* Drag handle indicator */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

@@ -15,10 +15,13 @@ export default function VideoCropper() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [overlaySize, setOverlaySize] = useState({ width: 9, height: 16 });
   const [percentage, setPercentage] = useState(0);
+  const [aRWidthPercent, setARWidthPercent] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+
+
 
   const aspectRatios = {
     "9:16": { width: 9, height: 16 },
@@ -72,6 +75,9 @@ export default function VideoCropper() {
     setIsPlaying(!isPlaying);
   };
 
+
+
+
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current || !videoRef.current) return;
 
@@ -94,13 +100,24 @@ export default function VideoCropper() {
 
   const updateOverlaySize = (ratio: string) => {
     const aspectRatio = aspectRatios[ratio as keyof typeof aspectRatios];
-    if (aspectRatio) {
-      // Assuming you want to set the overlay size in pixels
-      const height = 300; // Set a fixed height or calculate based on your requirements
+    if (aspectRatio && videoRef.current) {
+      const videoWidth = videoRef.current.videoWidth || 1; // Fallback to avoid division by zero
+      const videoHeight = videoRef.current.videoHeight || 1;
+
+      // Calculate height based on a fixed percentage of video height, or use dynamic logic
+      const height = videoHeight * 0.5; // Example: Make it 50% of the video height
       const width = (height * aspectRatio.width) / aspectRatio.height;
+
+      // Set overlay size
       handleSizeChange({ width, height });
+
+      // Calculate aspect ratio width as a percentage of total video width
+      const aspectRatioWidthPercentage = (width / videoWidth) * 100; // Now it's in percentage
+      setARWidthPercent(aspectRatioWidthPercentage);
+      console.log("Aspect Ratio Width Percentage:", aspectRatioWidthPercentage);
     }
   };
+
 
   return (
     <div className="bg-[#1C1C1F] min-h-screen p-8">
@@ -217,7 +234,7 @@ export default function VideoCropper() {
                   style={{
                     overflow: "hidden",
                     position: "relative",
-                    clipPath: `inset(0 ${100 - percentage - 50}% 0 ${percentage}%)`,
+                    clipPath: `inset(0 ${100 - percentage - aRWidthPercent}% 0 ${percentage}%)`,
                   }}
                 >
                   <video
