@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import Draggable from "react-draggable";
+import { DraggableEvent } from 'react-draggable';
 
 interface VideoOverlayProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -81,7 +82,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     return () => resizeObserver.disconnect();
   }, [aspectRatio, videoRef, onDimensionsChange, onPositionChange]);
 
-  const handleDrag = (e: any, data: { x: number; y: number }) => {
+  const handleDrag = (e: DraggableEvent, data: { x: number; y: number }) => {
     const totalDragWidth = bounds.right - bounds.left;
     const percentage =
       totalDragWidth === 0 ? 0 : (data.x / totalDragWidth) * 100;
