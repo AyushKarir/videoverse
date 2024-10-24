@@ -225,7 +225,7 @@ export default function VideoCropper() {
                   </div>
                   <p className="text-white/60 mb-1">Preview not available</p>
                   <p className="text-white/40 text-sm">
-                    Please click on "Start Cropper" and then play video
+                    Please click on &quot;Start Cropper&quot; and then play video
                   </p>
                 </div>
               ) : isPreviewMode ? (
@@ -245,7 +245,7 @@ export default function VideoCropper() {
                 </div>
               ) : (
                 <div className="text-white">
-                  Click "Generate Preview" to see the cropped video
+                  Click &quot;Generate Preview&quot; to see the cropped video
                 </div>
               )}
             </div>
