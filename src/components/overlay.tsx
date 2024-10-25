@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Draggable from "react-draggable";
 import { DraggableEvent } from 'react-draggable';
-import { debounce } from 'lodash/fp';
+import { debounce, DebounceSettings } from 'lodash';
 
 interface VideoOverlayProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -67,7 +67,10 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
 
   // Debounced version of updateDimensions
   const debouncedUpdateDimensions = useRef(
-    debounce(updateDimensions, 250, { leading: true, trailing: true })
+    debounce<() => void>(updateDimensions, 250, {
+      leading: true,
+      trailing: true,
+    } as DebounceSettings)
   ).current;
 
   useEffect(() => {
