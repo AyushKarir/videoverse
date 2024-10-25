@@ -168,6 +168,7 @@ export default function VideoCropper() {
             {/* Video Controls */}
             <div className="bg-[#1F1F1F] p-4 rounded-lg">
               <div className="flex items-center gap-4">
+                {/* <div className="flex"> */}
                 <button
                   onClick={handlePlayPause}
                   className="text-white hover:text-white/80 transition-colors"
@@ -175,7 +176,7 @@ export default function VideoCropper() {
                   {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                 </button>
 
-                <div className="flex-1">
+                <div className="flex-1 flex-col">
                   <div
                     ref={progressRef}
                     className="h-1 bg-white/20 rounded cursor-pointer"
@@ -187,7 +188,11 @@ export default function VideoCropper() {
                     />
                   </div>
                 </div>
+                {/* </div> */}
 
+
+              </div>
+              <div className="flex justify-between items-center mt-3">
                 <div className="flex items-center gap-2 text-white/60">
                   <span>{formatTime(currentTime)}</span>
                   <span>/</span>
@@ -203,10 +208,11 @@ export default function VideoCropper() {
                     step="0.1"
                     value={volume}
                     onChange={(e) => setVolume(parseFloat(e.target.value))}
-                    className="w-24 accent-white"
+                    className="w-24 accent-white border-0"
                   />
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -301,13 +307,13 @@ export default function VideoCropper() {
         <div className="mt-6 flex items-center gap-4">
           <button
             onClick={handleStartCropper}
-            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded"
+            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded-xl"
           >
             Start Cropper
           </button>
 
           <button
-            className="border border-white/20 text-white/60 hover:text-white px-6 py-2 rounded"
+            className="border border-white/20 text-white/60 hover:text-white px-6 py-2 rounded-xl"
             onClick={() => {
               setIsCropperActive(false);
               setIsPreviewMode(false);
@@ -317,7 +323,7 @@ export default function VideoCropper() {
           </button>
 
           <button
-            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded"
+            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded-xl"
             disabled={!isCropperActive}
             onClick={handleGeneratePreview}
           >
