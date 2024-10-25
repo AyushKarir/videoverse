@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Draggable from "react-draggable";
 import { DraggableEvent } from 'react-draggable';
-import { debounce } from 'lodash';
+import { debounce } from 'lodash/fp';
 
 interface VideoOverlayProps {
   videoRef: React.RefObject<HTMLVideoElement>;
