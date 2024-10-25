@@ -3,6 +3,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { Play, Pause, Volume2 } from "lucide-react";
 import VideoOverlay from "../components/overlay";
 
+interface VideoSettings {
+  timestamp: number;
+  volume: number;
+  percentage: number;
+  playbackRate: number;
+}
+
 export default function VideoCropper() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
@@ -12,10 +19,17 @@ export default function VideoCropper() {
   const [selectedRatio, setSelectedRatio] = useState("9:16");
   const [isCropperActive, setIsCropperActive] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState({ x: 0, y: 0 });
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [overlaySize, setOverlaySize] = useState({ width: 9, height: 16 });
   const [percentage, setPercentage] = useState(0);
   const [aRWidthPercent, setARWidthPercent] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [videoSettings, setVideoSettings] = useState<VideoSettings>({
+    timestamp: 0,
+    volume: 0.5,
+    percentage: 0,
+    playbackRate: 1
+  });
 
   const [activeTab, setActiveTab] = useState("auto");
 
@@ -23,14 +37,55 @@ export default function VideoCropper() {
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
-
-
   const aspectRatios = {
     "9:16": { width: 9, height: 16 },
     "4:5": { width: 4, height: 5 },
     "1:1": { width: 1, height: 1 },
     "16:9": { width: 16, height: 9 },
   };
+
+  // Save settings to JSON whenever they change
+  useEffect(() => {
+    const saveSettings = () => {
+      const settings: VideoSettings = {
+        timestamp: currentTime,
+        volume,
+        percentage,
+        playbackRate
+      };
+      setVideoSettings(settings);
+      // In a real application, you might want to save this to a file or database
+      console.log('Settings saved:', settings);
+    };
+
+    saveSettings();
+  }, [currentTime, volume, percentage, playbackRate]);
+
+  // Handle preview visibility
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isPlaying && isCropperActive && !isDragging) {
+        setIsPreviewVisible(true);
+      } else {
+        setIsPreviewVisible(false);
+      }
+    }
+  }, [isPlaying, isCropperActive, isDragging]);
+
+  // Sync preview with main video
+  useEffect(() => {
+    if (isPreviewVisible && previewVideoRef.current && videoRef.current) {
+      previewVideoRef.current.currentTime = videoRef.current.currentTime;
+      previewVideoRef.current.playbackRate = playbackRate;
+      previewVideoRef.current.volume = volume;
+
+      if (isPlaying) {
+        previewVideoRef.current.play().catch(console.error);
+      } else {
+        previewVideoRef.current.pause();
+      }
+    }
+  }, [isPlaying, isPreviewVisible, currentTime, playbackRate, volume]);
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -46,24 +101,9 @@ export default function VideoCropper() {
     }
   }, []);
 
-  // Synchronize preview video with main video
-  useEffect(() => {
-    if (isPreviewMode && previewVideoRef.current && videoRef.current) {
-      previewVideoRef.current.currentTime = videoRef.current.currentTime;
-      if (isPlaying) {
-        previewVideoRef.current.play();
-      } else {
-        previewVideoRef.current.pause();
-      }
-    }
-  }, [isPlaying, isPreviewMode, currentTime]);
-
   const handleStartCropper = () => {
     setIsCropperActive(true);
-  };
-
-  const handleGeneratePreview = () => {
-    setIsPreviewMode(true);
+    setIsPreviewVisible(false);
   };
 
   const handlePlayPause = () => {
@@ -76,9 +116,6 @@ export default function VideoCropper() {
     }
     setIsPlaying(!isPlaying);
   };
-
-
-
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current || !videoRef.current) return;
@@ -100,26 +137,31 @@ export default function VideoCropper() {
     setOverlaySize(newSize);
   };
 
+  //change playback state
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const updateOverlaySize = (ratio: string) => {
     const aspectRatio = aspectRatios[ratio as keyof typeof aspectRatios];
     if (aspectRatio && videoRef.current) {
-      const videoWidth = videoRef.current.videoWidth || 1; // Fallback to avoid division by zero
+      const videoWidth = videoRef.current.videoWidth || 1;
       const videoHeight = videoRef.current.videoHeight || 1;
-
       // Calculate height based on a fixed percentage of video height, or use dynamic logic
       const height = videoHeight * 0.5; // Example: Make it 50% of the video height
       const width = (height * aspectRatio.width) / aspectRatio.height;
 
-      // Set overlay size
-      handleSizeChange({ width, height });
+      const overlayWidth = (videoHeight * aspectRatio.width) / aspectRatio.height;
+      const finalWidth1 = Math.min(overlayWidth, videoWidth);
+      const aspectRatioWidthPercentage = (finalWidth1 / videoWidth) * 100;
 
-      // Calculate aspect ratio width as a percentage of total video width
-      const aspectRatioWidthPercentage = (width / videoWidth) * 100; // Now it's in percentage
       setARWidthPercent(aspectRatioWidthPercentage);
-      console.log("Aspect Ratio Width Percentage:", aspectRatioWidthPercentage);
+      handleSizeChange({ width: finalWidth1, height });
+      setIsPreviewVisible(false); // Hide preview when changing ratio
     }
   };
-
 
   return (
     <div className="bg-[#1C1C1F] min-h-screen p-8">
@@ -130,35 +172,30 @@ export default function VideoCropper() {
           <div className="flex gap-4 bg-[#45474e] px-2 py-1 rounded-xl">
             <button
               onClick={() => setActiveTab("auto")}
-              className={`px-4 py-2 transition-colors ${activeTab === "auto" ? "bg-[#1c1c1f] text-white rounded-xl" : "bg-transparent text-white/60 rounded-xl"
-                } hover:text-white`}
+              className={`px-4 py-2 transition-colors ${activeTab === "auto" ? "bg-[#1c1c1f] text-white rounded-xl" : "bg-transparent text-white/60 rounded-xl"}`}
             >
               Auto Flip
             </button>
             <button
               onClick={() => setActiveTab("dynamic")}
-              className={`px-4 py-2 transition-colors ${activeTab === "dynamic" ? "bg-[#1c1c1f] text-white rounded-xl" : "rounded-xl bg-transparent text-white/60"
-                } hover:text-white`}
+              className={`px-4 py-2 transition-colors ${activeTab === "dynamic" ? "bg-[#1c1c1f] text-white rounded-xl" : "rounded-xl bg-transparent text-white/60"}`}
             >
               Dynamic Flip
             </button>
           </div>
-          <button className="text-white text-xl"></button>
+          <p className=""></p>
         </div>
 
         {/* Main Content */}
         <div className="grid grid-cols-2 gap-8">
           {/* Video Player Section */}
           <div className="space-y-4">
-            {/* Video Container */}
             <div className="relative bg-black rounded-lg overflow-hidden">
               <video
                 ref={videoRef}
-                className="w-full aspect-video"
+                className="w-full h-[300px] object-cover"
                 src="/sample-video.mp4"
-                onTimeUpdate={() =>
-                  setCurrentTime(videoRef.current?.currentTime || 0)
-                }
+                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
               />
               {isCropperActive && (
                 <VideoOverlay
@@ -166,11 +203,11 @@ export default function VideoCropper() {
                   setPercentage={setPercentage}
                   videoRef={videoRef}
                   isActive={true}
-                  aspectRatio={
-                    aspectRatios[selectedRatio as keyof typeof aspectRatios]
-                  }
+                  aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
                   onPositionChange={handlePositionChange}
                   onDimensionsChange={handleSizeChange}
+                  onDragStart={() => setIsDragging(true)}
+                  onDragEnd={() => setIsDragging(false)}
                 />
               )}
             </div>
@@ -178,7 +215,6 @@ export default function VideoCropper() {
             {/* Video Controls */}
             <div className="bg-[#1F1F1F] p-4 rounded-lg">
               <div className="flex items-center gap-4">
-                {/* <div className="flex"> */}
                 <button
                   onClick={handlePlayPause}
                   className="text-white hover:text-white/80 transition-colors"
@@ -198,9 +234,6 @@ export default function VideoCropper() {
                     />
                   </div>
                 </div>
-                {/* </div> */}
-
-
               </div>
               <div className="flex justify-between items-center mt-3">
                 <div className="flex items-center gap-2 text-white/60">
@@ -222,14 +255,13 @@ export default function VideoCropper() {
                   />
                 </div>
               </div>
-
             </div>
           </div>
 
           {/* Preview */}
           <div className="bg-[#1F1F1F] rounded-lg p-6">
             <h2 className="text-white mb-4">Preview</h2>
-            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden">
+            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden aspect-video">
               {!isCropperActive ? (
                 <div className="text-center">
                   <div className="mb-2">
@@ -244,24 +276,24 @@ export default function VideoCropper() {
                     Please click on &quot;Start Cropper&quot; and then play video
                   </p>
                 </div>
-              ) : isPreviewMode ? (
+              ) : isPreviewVisible ? (
                 <div
                   className="relative"
                   style={{
                     overflow: "hidden",
                     position: "relative",
-                    clipPath: `inset(0 ${100 - percentage - aRWidthPercent}% 0 ${percentage}%)`,
+                    clipPath: `inset(0 ${(100 - aRWidthPercent) - percentage}% 0 ${percentage}%)`,
                   }}
                 >
                   <video
                     ref={previewVideoRef}
-                    className="h-full object-cover"
+                    className="w-full h-[300px] object-cover"
                     src="/sample-video.mp4"
                   />
                 </div>
               ) : (
                 <div className="text-white">
-                  Click &quot;Generate Preview&quot; to see the cropped video
+                  Play the video to see preview
                 </div>
               )}
             </div>
@@ -271,22 +303,22 @@ export default function VideoCropper() {
         {/* Footer Controls */}
         <div className="mt-6 flex items-center gap-4">
           <select
-            value={`${playbackRate}x`}
-            onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+            value={`${playbackRate}`} // Remove the 'x' here since we're storing it as a number
+            onChange={(e) => {
+              const newRate = parseFloat(e.target.value);
+              setPlaybackRate(newRate);
+              if (videoRef.current) {
+                videoRef.current.playbackRate = newRate;
+              }
+              setIsPreviewVisible(false);
+            }}
             className="bg-transparent text-white/60 border border-white/20 rounded px-3 py-2"
           >
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="1x">
-              Playback speed 1x
-            </option>
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="0.5x">
-              0.5x
-            </option>
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="1.5x">
-              1.5x
-            </option>
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="2x">
-              2x
-            </option>
+            <option className="bg-[#2a2a2a]" value="1">Playback speed 1x</option>
+            <option className="bg-[#2a2a2a]" value="0.25"> 0.25x</option>
+            <option className="bg-[#2a2a2a]" value="0.5">0.5x</option>
+            <option className="bg-[#2a2a2a]" value="1.5">1.5x</option>
+            <option className="bg-[#2a2a2a]" value="2">2x</option>
           </select>
 
           <select
@@ -294,22 +326,14 @@ export default function VideoCropper() {
             onChange={(e) => {
               const newRatio = e.target.value;
               setSelectedRatio(newRatio);
-              updateOverlaySize(newRatio); // Update overlay size when the ratio changes
+              updateOverlaySize(newRatio);
             }}
             className="bg-transparent text-white/60 border border-white/20 rounded px-3 py-2"
           >
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="9:16">
-              Cropper Aspect Ratio 9:16
-            </option>
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="1:1">
-              1:1
-            </option>
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="4:5">
-              4:5
-            </option>
-            <option className="bg-[#2a2a2a] hover:bg-[#2c2c2c]" value="16:9">
-              16:9
-            </option>
+            <option className="bg-[#2a2a2a]" value="9:16">Cropper Aspect Ratio 9:16</option>
+            <option className="bg-[#2a2a2a]" value="1:1">1:1</option>
+            <option className="bg-[#2a2a2a]" value="4:5">4:5</option>
+            <option className="bg-[#2a2a2a]" value="16:9">16:9</option>
           </select>
         </div>
 
@@ -326,16 +350,25 @@ export default function VideoCropper() {
             className="border border-white/20 text-white/60 hover:text-white px-6 py-2 rounded-xl"
             onClick={() => {
               setIsCropperActive(false);
-              setIsPreviewMode(false);
+              setIsPreviewVisible(false);
             }}
           >
             Remove Cropper
           </button>
-
           <button
+            onClick={() => {
+              const jsonString = JSON.stringify(videoSettings, null, 2);
+              const blob = new Blob([jsonString], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = 'video-settings.json';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }}
             className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded-xl"
-            disabled={!isCropperActive}
-            onClick={handleGeneratePreview}
           >
             Generate Preview
           </button>
@@ -343,9 +376,9 @@ export default function VideoCropper() {
           <button className="ml-auto text-white/60 hover:text-white px-6 py-2 rounded">
             Cancel
           </button>
+
         </div>
       </div>
     </div>
   );
 }
-

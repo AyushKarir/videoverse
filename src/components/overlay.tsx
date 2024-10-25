@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Draggable from "react-draggable";
 import { DraggableEvent } from 'react-draggable';
+import { debounce } from 'lodash';
 
 interface VideoOverlayProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -14,6 +15,8 @@ interface VideoOverlayProps {
   onDimensionsChange: (dimensions: { width: number; height: number }) => void;
   percentage: number;
   setPercentage: React.Dispatch<React.SetStateAction<number>>;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }
 
 const VideoOverlay: React.FC<VideoOverlayProps> = ({
@@ -24,74 +27,92 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   onDimensionsChange,
   percentage,
   setPercentage,
+  onDragStart,
+  onDragEnd,
 }) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [bounds, setBounds] = useState({ left: 0, right: 0 });
   const overlayRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const isInitializedRef = useRef(false);
-  // console.log(position);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  const updateDimensions = () => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const videoHeight = videoElement.offsetHeight;
+    const videoWidth = videoElement.offsetWidth;
+
+    // Calculate overlay dimensions based on aspect ratio
+    const overlayWidth = (videoHeight * aspectRatio.width) / aspectRatio.height;
+    const finalWidth = Math.min(overlayWidth, videoWidth);
+
+    const newDimensions = { width: finalWidth, height: videoHeight };
+
+    // Calculate drag bounds and set initial position
+    const maxRight = videoWidth - finalWidth;
+    setDimensions(newDimensions);
+    setBounds({ left: 0, right: maxRight });
+    onDimensionsChange(newDimensions);
+
+    if (!isInitializedRef.current) {
+      const initialX = (videoWidth - finalWidth) / 2;
+      const initialPercentage = maxRight === 0 ? 0 : (initialX / maxRight) * 100;
+      setPosition({ x: initialX, y: 0 });
+      onPositionChange({ x: initialX, y: 0, percentage: initialPercentage });
+      isInitializedRef.current = true;
+    }
+  };
+
+  // Debounced version of updateDimensions
+  const debouncedUpdateDimensions = useRef(
+    debounce(updateDimensions, 250, { leading: true, trailing: true })
+  ).current;
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    const videoElement = videoRef.current;
+    if (!videoElement || !isActive) return;
 
-    const updateDimensions = () => {
-      const videoElement = videoRef.current!;
-      const videoHeight = videoElement.offsetHeight;
-      const videoWidth = videoElement.offsetWidth;
+    // Initial update
+    updateDimensions();
 
-      // Calculate width based on aspect ratio while keeping full height
-      const overlayWidth =
-        (videoHeight * aspectRatio.width) / aspectRatio.height;
-      const finalWidth = Math.min(overlayWidth, videoWidth);
-
-      const newDimensions = {
-        width: finalWidth,
-        height: videoHeight,
-      };
-
-      // Calculate drag bounds
-      const maxRight = videoWidth - finalWidth;
-
-      // Update dimensions and bounds
-      setDimensions(newDimensions);
-      setBounds({ left: 0, right: maxRight });
-      onDimensionsChange(newDimensions);
-
-      // Set initial position only once
-      if (!isInitializedRef.current) {
-        const initialX = (videoWidth - finalWidth) / 2;
-        setPosition({ x: initialX, y: 0 });
-        const initialPercentage =
-          maxRight === 0 ? 0 : (initialX / maxRight) * 100;
-        onPositionChange({
-          x: initialX,
-          y: 0,
-          percentage: initialPercentage,
-        });
-        isInitializedRef.current = true;
+    // Setup resize observer
+    resizeObserverRef.current = new ResizeObserver((entries) => {
+      // Only update if the size actually changed significantly
+      const entry = entries[0];
+      if (entry) {
+        const { width, height } = entry.contentRect;
+        if (
+          Math.abs(width - dimensions.width) > 1 ||
+          Math.abs(height - dimensions.height) > 1
+        ) {
+          debouncedUpdateDimensions();
+        }
       }
-    };
-
-    const resizeObserver = new ResizeObserver(() => {
-      // Debounce resize updates
-      requestAnimationFrame(updateDimensions);
     });
 
-    resizeObserver.observe(videoRef.current);
-    return () => resizeObserver.disconnect();
-  }, [aspectRatio, videoRef, onDimensionsChange, onPositionChange]);
+    resizeObserverRef.current.observe(videoElement);
 
+    return () => {
+      debouncedUpdateDimensions.cancel();
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+    };
+  }, [isActive, aspectRatio]); // Only re-run when isActive or aspectRatio changes
+
+  // Handle drag with debouncing
   const handleDrag = (e: DraggableEvent, data: { x: number; y: number }) => {
     const totalDragWidth = bounds.right - bounds.left;
-    const percentage =
-      totalDragWidth === 0 ? 0 : (data.x / totalDragWidth) * 100;
-    // console.log(percentage);
-    setPercentage(percentage);
+    const percentage = totalDragWidth === 0 ? 0 : (data.x / totalDragWidth) * 100;
 
-    // Only update if position actually changed
+    // Update position immediately for smooth dragging
+    setPosition({ x: data.x, y: 0 });
+
+    // Update percentage with some debouncing to prevent too frequent updates
     if (position.x !== data.x) {
-      setPosition({ x: data.x, y: 0 });
+      setPercentage(percentage);
       onPositionChange({
         x: data.x,
         y: 0,
@@ -108,6 +129,8 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         axis="x"
         bounds={{ left: bounds.left, right: bounds.right, top: 0, bottom: 0 }}
         onDrag={handleDrag}
+        onStart={() => onDragStart?.()}
+        onStop={() => onDragEnd?.()}
         nodeRef={overlayRef}
         position={position}
       >
@@ -132,7 +155,6 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
           </div>
           <div className="absolute inset-x-0 bottom-0 text-white text-xs bg-black bg-opacity-50 p-1">
             {percentage.toFixed(2)}%
-            {/* {100 - percentage.toFixed(2)}% */}
           </div>
           {/* Drag handle indicator */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -155,4 +177,3 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
 };
 
 export default VideoOverlay;
-
