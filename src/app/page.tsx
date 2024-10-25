@@ -17,6 +17,8 @@ export default function VideoCropper() {
   const [percentage, setPercentage] = useState(0);
   const [aRWidthPercent, setARWidthPercent] = useState(0);
 
+  const [activeTab, setActiveTab] = useState("auto");
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -124,16 +126,24 @@ export default function VideoCropper() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-white text-2xl font-medium">Dynamic Flip</h1>
-          <div className="flex gap-4">
-            <button className="px-4 py-2 text-white/60 hover:text-white transition-colors">
+          <h1 className="text-white text-2xl font-medium">Cropper</h1>
+          <div className="flex gap-4 bg-[#45474e] px-2 py-1 rounded-xl">
+            <button
+              onClick={() => setActiveTab("auto")}
+              className={`px-4 py-2 transition-colors ${activeTab === "auto" ? "bg-[#1c1c1f] text-white rounded-xl" : "bg-transparent text-white/60 rounded-xl"
+                } hover:text-white`}
+            >
               Auto Flip
             </button>
-            <button className="px-4 py-2 text-white/60 hover:text-white transition-colors">
+            <button
+              onClick={() => setActiveTab("dynamic")}
+              className={`px-4 py-2 transition-colors ${activeTab === "dynamic" ? "bg-[#1c1c1f] text-white rounded-xl" : "rounded-xl bg-transparent text-white/60"
+                } hover:text-white`}
+            >
               Dynamic Flip
             </button>
           </div>
-          <button className="text-white text-xl">X</button>
+          <button className="text-white text-xl"></button>
         </div>
 
         {/* Main Content */}
