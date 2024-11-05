@@ -9,6 +9,7 @@ interface VideoSettings {
   volume: number;
   percentage: number;
   playbackRate: number;
+  timestamp?: string;
   previousSettings?: {
     volume: number;
     leftBound: number;
