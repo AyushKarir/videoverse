@@ -1,16 +1,24 @@
-"use client";
+'use client'
 import React, { useState, useRef, useEffect } from "react";
 import { Play, Pause, Volume2 } from "lucide-react";
 import VideoOverlay from "../components/overlay";
+import VideoPreview from "../components/videoPreview";
+// import VideoPreview from "../components/overlay";
 
 interface VideoSettings {
-  timestamp: number;
   volume: number;
   percentage: number;
   playbackRate: number;
+  previousSettings?: {
+    volume: number;
+    leftBound: number;
+    rightBound: number;
+    playbackRate: number;
+    timestamp: string;  // To track when the setting was saved
+  }[];
 }
 
-export default function VideoCropper() {
+const VideoCropper = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -25,13 +33,13 @@ export default function VideoCropper() {
   const [aRWidthPercent, setARWidthPercent] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [videoSettings, setVideoSettings] = useState<VideoSettings>({
-    timestamp: 0,
     volume: 0.5,
     percentage: 0,
     playbackRate: 1
   });
 
   const [activeTab, setActiveTab] = useState("auto");
+  const wasPlayingBeforeDragRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -44,48 +52,73 @@ export default function VideoCropper() {
     "16:9": { width: 16, height: 9 },
   };
 
-  // Save settings to JSON whenever they change
+  // Modified: Only save settings when drag ends and only for specific properties
   useEffect(() => {
-    const saveSettings = () => {
-      const settings: VideoSettings = {
-        timestamp: currentTime,
+    if (!isDragging) {
+      const newSetting = {
         volume,
         percentage,
-        playbackRate
+        playbackRate,
+        timestamp: new Date().toISOString()
       };
-      setVideoSettings(settings);
-      // In a real application, you might want to save this to a file or database
-      console.log('Settings saved:', settings);
-    };
 
-    saveSettings();
-  }, [currentTime, volume, percentage, playbackRate]);
+      setVideoSettings(prevSettings => {
+        const previousSettings = prevSettings.previousSettings || [];
 
-  // Handle preview visibility
-  useEffect(() => {
-    if (videoRef.current) {
-      if (isPlaying && isCropperActive && !isDragging) {
-        setIsPreviewVisible(true);
-      } else {
-        setIsPreviewVisible(false);
-      }
+        return {
+          ...newSetting,
+          previousSettings: [...previousSettings, {
+            volume: prevSettings.volume,
+            leftBound: prevSettings.percentage,
+            rightBound: 100 - prevSettings.percentage,
+            playbackRate: prevSettings.playbackRate,
+            timestamp: prevSettings.timestamp || new Date().toISOString()
+          }]
+        };
+      });
+
+      console.log('Settings saved:', videoSettings);
     }
-  }, [isPlaying, isCropperActive, isDragging]);
+  }, [percentage, isDragging, playbackRate]);
 
-  // Sync preview with main video
   useEffect(() => {
-    if (isPreviewVisible && previewVideoRef.current && videoRef.current) {
+    if (isPreviewVisible && previewVideoRef.current && videoRef.current && !isDragging) {
       previewVideoRef.current.currentTime = videoRef.current.currentTime;
       previewVideoRef.current.playbackRate = playbackRate;
       previewVideoRef.current.volume = volume;
 
-      if (isPlaying) {
+      if (isPlaying && !isDragging) {
         previewVideoRef.current.play().catch(console.error);
       } else {
         previewVideoRef.current.pause();
       }
     }
-  }, [isPlaying, isPreviewVisible, currentTime, playbackRate, volume]);
+  }, [isPlaying, isPreviewVisible, currentTime, playbackRate, volume, isDragging]);
+
+  // Handle preview visibility with modified conditions
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isCropperActive && !isDragging) {
+        setIsPreviewVisible(true);
+      } else {
+        setIsPreviewVisible(false);
+      }
+    }
+  }, [isCropperActive, isDragging]);
+
+  useEffect(() => {
+    if (isPreviewVisible && previewVideoRef.current && videoRef.current && !isDragging) {
+      previewVideoRef.current.currentTime = videoRef.current.currentTime;
+      previewVideoRef.current.playbackRate = playbackRate;
+      previewVideoRef.current.volume = volume;
+
+      if (isPlaying && !isDragging) {
+        previewVideoRef.current.play().catch(console.error);
+      } else {
+        previewVideoRef.current.pause();
+      }
+    }
+  }, [isPlaying, isPreviewVisible, currentTime, playbackRate, volume, isDragging]);
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -103,7 +136,8 @@ export default function VideoCropper() {
 
   const handleStartCropper = () => {
     setIsCropperActive(true);
-    setIsPreviewVisible(false);
+    setIsPreviewVisible(true);
+    updateOverlaySize(selectedRatio);
   };
 
   const handlePlayPause = () => {
@@ -137,7 +171,30 @@ export default function VideoCropper() {
     setOverlaySize(newSize);
   };
 
-  //change playback state
+  const handleDragStart = () => {
+    setIsDragging(true);
+    wasPlayingBeforeDragRef.current = isPlaying;
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (previewVideoRef.current) {
+      previewVideoRef.current.pause();
+    }
+    setIsPlaying(false);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    // Don't automatically resume playback
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (previewVideoRef.current) {
+      previewVideoRef.current.pause();
+    }
+    setIsPlaying(false);
+  };
+
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.playbackRate = playbackRate;
@@ -149,8 +206,7 @@ export default function VideoCropper() {
     if (aspectRatio && videoRef.current) {
       const videoWidth = videoRef.current.videoWidth || 1;
       const videoHeight = videoRef.current.videoHeight || 1;
-      // Calculate height based on a fixed percentage of video height, or use dynamic logic
-      const height = videoHeight * 0.5; // Example: Make it 50% of the video height
+      const height = videoHeight * 0.5;
       const width = (height * aspectRatio.width) / aspectRatio.height;
 
       const overlayWidth = (videoHeight * aspectRatio.width) / aspectRatio.height;
@@ -159,7 +215,7 @@ export default function VideoCropper() {
 
       setARWidthPercent(aspectRatioWidthPercentage);
       handleSizeChange({ width: finalWidth1, height });
-      setIsPreviewVisible(false); // Hide preview when changing ratio
+      setIsPreviewVisible(true);
     }
   };
 
@@ -193,7 +249,7 @@ export default function VideoCropper() {
             <div className="relative bg-black rounded-lg overflow-hidden">
               <video
                 ref={videoRef}
-                className="w-full h-[300px] object-cover"
+                className="aspect-video object-cover w-full"
                 src="/sample-video.mp4"
                 onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
               />
@@ -206,8 +262,8 @@ export default function VideoCropper() {
                   aspectRatio={aspectRatios[selectedRatio as keyof typeof aspectRatios]}
                   onPositionChange={handlePositionChange}
                   onDimensionsChange={handleSizeChange}
-                  onDragStart={() => setIsDragging(true)}
-                  onDragEnd={() => setIsDragging(false)}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 />
               )}
             </div>
@@ -277,20 +333,16 @@ export default function VideoCropper() {
                   </p>
                 </div>
               ) : isPreviewVisible ? (
-                <div
-                  className="relative"
-                  style={{
-                    overflow: "hidden",
-                    position: "relative",
-                    clipPath: `inset(0 ${(100 - aRWidthPercent) - percentage}% 0 ${percentage}%)`,
-                  }}
+                <VideoPreview
+                  percentage={percentage}
+                  aRWidthPercent={aRWidthPercent}
                 >
                   <video
                     ref={previewVideoRef}
-                    className="w-full h-[300px] object-cover"
+                    className="aspect-video object-cover w-full"
                     src="/sample-video.mp4"
                   />
-                </div>
+                </VideoPreview>
               ) : (
                 <div className="text-white">
                   Play the video to see preview
@@ -303,7 +355,7 @@ export default function VideoCropper() {
         {/* Footer Controls */}
         <div className="mt-6 flex items-center gap-4">
           <select
-            value={`${playbackRate}`} // Remove the 'x' here since we're storing it as a number
+            value={`${playbackRate}`}
             onChange={(e) => {
               const newRate = parseFloat(e.target.value);
               setPlaybackRate(newRate);
@@ -315,7 +367,7 @@ export default function VideoCropper() {
             className="bg-transparent text-white/60 border border-white/20 rounded px-3 py-2"
           >
             <option className="bg-[#2a2a2a]" value="1">Playback speed 1x</option>
-            <option className="bg-[#2a2a2a]" value="0.25"> 0.25x</option>
+            <option className="bg-[#2a2a2a]" value="0.25">0.25x</option>
             <option className="bg-[#2a2a2a]" value="0.5">0.5x</option>
             <option className="bg-[#2a2a2a]" value="1.5">1.5x</option>
             <option className="bg-[#2a2a2a]" value="2">2x</option>
@@ -368,7 +420,7 @@ export default function VideoCropper() {
               document.body.removeChild(link);
               URL.revokeObjectURL(url);
             }}
-            className="bg-[#7F5AF0] hover:bg-[#7F5AF0]/90 text-white px-6 py-2 rounded-xl"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl"
           >
             Generate Preview
           </button>
@@ -382,3 +434,4 @@ export default function VideoCropper() {
     </div>
   );
 }
+export default VideoCropper;
