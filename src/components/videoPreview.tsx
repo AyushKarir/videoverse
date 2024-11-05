@@ -1,5 +1,12 @@
 import { useMemo } from "react";
-const VideoPreview = ({ percentage, aRWidthPercent, children }) => {
+
+interface VideoPreviewProps {
+    percentage: number;
+    aRWidthPercent: number;
+    children: React.ReactNode;
+};
+
+const VideoPreview = ({ percentage, aRWidthPercent, children }: VideoPreviewProps) => {
     const clipPathValues = useMemo(() => {
         // Calculate how far right the overlay can move
         const maxRightPosition = 100 - aRWidthPercent;
