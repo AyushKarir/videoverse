@@ -19,6 +19,10 @@ interface VideoOverlayProps {
   onDragEnd?: () => void;
 }
 
+//we have used memo here because it will keep the track of the changes in 
+//props and only render the component if 1 of these props changes 
+
+//by doing this VideoOverlay will not rerender every time the parent component renders
 const VideoOverlay: React.FC<VideoOverlayProps> = memo(({
   videoRef,
   isActive,
@@ -68,7 +72,8 @@ const VideoOverlay: React.FC<VideoOverlayProps> = memo(({
       setBounds({ left: 0, right: maxRight });
 
       if (!isInitializedRef.current) {
-        const initialX = (videoWidth - finalWidth) / 2;
+        // const initialX = (videoWidth - finalWidth) / 2;
+        const initialX = 0;
         const initialPercentage = maxRight === 0 ? 0 : (initialX / maxRight) * 100;
         setPosition({ x: initialX, y: 0 });
         onPositionChange({ x: initialX, y: 0, percentage: initialPercentage });
@@ -78,6 +83,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = memo(({
   }, [aspectRatio, dimensions, onDimensionsChange, onPositionChange]);
 
   // Debounced version with cleanup
+  //this function updates after 250ms 
   const debouncedUpdateDimensions = useRef(
     debounce(updateDimensions, 250, { leading: false, trailing: true })
   ).current;
@@ -107,6 +113,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = memo(({
     resizeObserverRef.current.observe(videoElement);
 
     return () => {
+      //clears the updated calls for debounced
       debouncedUpdateDimensions.cancel();
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect();
@@ -197,3 +204,15 @@ const VideoOverlay: React.FC<VideoOverlayProps> = memo(({
 VideoOverlay.displayName = 'VideoOverlay';
 
 export default VideoOverlay;
+
+//throttle debounce
+//lazy loading
+//dynamic component
+//virtualization list
+// pagination
+
+
+//schema postgres
+//queries
+//
+

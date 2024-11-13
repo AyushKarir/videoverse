@@ -53,8 +53,40 @@ const VideoCropper = () => {
     "16:9": { width: 16, height: 9 },
   };
 
+
+  const handleStartCropper = () => {
+    setIsCropperActive(true);
+    setIsPreviewVisible(true);
+    updateOverlaySize(selectedRatio);
+  };
+
+  const handlePlayPause = () => {
+    if (!videoRef.current) return;
+
+    if (isPlaying) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  // Handle preview visibility with modified conditions
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isCropperActive && !isDragging) {
+        setIsPreviewVisible(true);
+      } else {
+        setIsPreviewVisible(false);
+      }
+    }
+  }, [isCropperActive, isDragging]);
+
+
+
   // Modified: Only save settings when drag ends and only for specific properties
   useEffect(() => {
+    //only save when isDragging is false
     if (!isDragging) {
       const newSetting = {
         volume,
@@ -88,24 +120,21 @@ const VideoCropper = () => {
       previewVideoRef.current.playbackRate = playbackRate;
       previewVideoRef.current.volume = volume;
 
+      //if the main video is playing then the preview video stops 
       if (isPlaying && !isDragging) {
         previewVideoRef.current.play().catch(console.error);
-      } else {
+      }
+      //if the main video stops preview stops 
+      else {
         previewVideoRef.current.pause();
       }
     }
   }, [isPlaying, isPreviewVisible, currentTime, playbackRate, volume, isDragging]);
 
-  // Handle preview visibility with modified conditions
-  useEffect(() => {
-    if (videoRef.current) {
-      if (isCropperActive && !isDragging) {
-        setIsPreviewVisible(true);
-      } else {
-        setIsPreviewVisible(false);
-      }
-    }
-  }, [isCropperActive, isDragging]);
+
+
+
+
 
   useEffect(() => {
     if (isPreviewVisible && previewVideoRef.current && videoRef.current && !isDragging) {
@@ -135,22 +164,47 @@ const VideoCropper = () => {
     }
   }, []);
 
-  const handleStartCropper = () => {
-    setIsCropperActive(true);
-    setIsPreviewVisible(true);
-    updateOverlaySize(selectedRatio);
-  };
-
-  const handlePlayPause = () => {
-    if (!videoRef.current) return;
-
-    if (isPlaying) {
+  //pause the prev and main video on drag start
+  const handleDragStart = () => {
+    setIsDragging(true);
+    wasPlayingBeforeDragRef.current = isPlaying;
+    if (videoRef.current) {
       videoRef.current.pause();
-    } else {
-      videoRef.current.play();
     }
-    setIsPlaying(!isPlaying);
+    if (previewVideoRef.current) {
+      previewVideoRef.current.pause();
+    }
+    setIsPlaying(false);
   };
+
+  //pause the prev and main vid on drag end
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    // Don't automatically resume playback
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (previewVideoRef.current) {
+      previewVideoRef.current.pause();
+    }
+    setIsPlaying(false);
+  };
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
+
+  useEffect(() => {
+    if (videoRef.current && previewVideoRef.current) {
+      previewVideoRef.current.width = videoRef.current.clientWidth;
+      previewVideoRef.current.height = videoRef.current.clientHeight;
+    }
+  }, []);
+
+
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current || !videoRef.current) return;
@@ -172,42 +226,14 @@ const VideoCropper = () => {
     setOverlaySize(newSize);
   };
 
-  const handleDragStart = () => {
-    setIsDragging(true);
-    wasPlayingBeforeDragRef.current = isPlaying;
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-    if (previewVideoRef.current) {
-      previewVideoRef.current.pause();
-    }
-    setIsPlaying(false);
-  };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    // Don't automatically resume playback
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-    if (previewVideoRef.current) {
-      previewVideoRef.current.pause();
-    }
-    setIsPlaying(false);
-  };
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = playbackRate;
-    }
-  }, [playbackRate]);
 
   const updateOverlaySize = (ratio: string) => {
     const aspectRatio = aspectRatios[ratio as keyof typeof aspectRatios];
     if (aspectRatio && videoRef.current) {
       const videoWidth = videoRef.current.videoWidth || 1;
       const videoHeight = videoRef.current.videoHeight || 1;
-      const height = videoHeight * 0.5;
+      const height = videoHeight;
       const width = (height * aspectRatio.width) / aspectRatio.height;
 
       const overlayWidth = (videoHeight * aspectRatio.width) / aspectRatio.height;
@@ -247,7 +273,7 @@ const VideoCropper = () => {
         <div className="grid grid-cols-2 gap-8">
           {/* Video Player Section */}
           <div className="space-y-4">
-            <div className="relative bg-black rounded-lg overflow-hidden">
+            <div className="relative bg-black rounded-lg overflow-hidden" style={{ width: '100%', height: 'auto' }}>
               <video
                 ref={videoRef}
                 className="aspect-video object-cover w-full"
@@ -316,9 +342,11 @@ const VideoCropper = () => {
           </div>
 
           {/* Preview */}
-          <div className="bg-[#1F1F1F] rounded-lg p-6">
+          <div className="bg-[#1F1F1F] rounded-lg">
             <h2 className="text-white mb-4">Preview</h2>
-            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden aspect-video">
+            <div className="bg-[#2A2A2A] rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden aspect-video"
+              style={{ width: '100%', height: 'auto' }}
+            >
               {!isCropperActive ? (
                 <div className="text-center">
                   <div className="mb-2">
